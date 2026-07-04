@@ -7,16 +7,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .ai import ai_client
+from .auth import auth_manager, auth_status_payload
 from .browser import login_manager, monitor_runner
 from .models import (
     Account,
     AccountCreate,
+    AuthLoginRequest,
+    AuthStatusResponse,
     AiSettings,
     AiTestResponse,
     AppSettings,
@@ -60,10 +64,47 @@ app.add_middleware(
 FRONTEND_DIST_DIR = Path("frontend/dist")
 FRONTEND_INDEX = FRONTEND_DIST_DIR / "index.html"
 
+PUBLIC_API_PATHS = {
+    "/api/health",
+    "/api/auth/status",
+    "/api/auth/login",
+    "/api/auth/logout",
+}
+
+
+@app.middleware("http")
+async def require_authenticated_session(request: Request, call_next):  # type: ignore[no-untyped-def]
+    if (
+        request.url.path.startswith("/api/")
+        and request.url.path not in PUBLIC_API_PATHS
+        and not auth_manager.is_authenticated(request)
+    ):
+        return JSONResponse({"detail": "需要登录"}, status_code=401)
+    return await call_next(request)
+
 
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/auth/status")
+async def auth_status(request: Request) -> AuthStatusResponse:
+    return AuthStatusResponse(**auth_status_payload(auth_manager, request))
+
+
+@app.post("/api/auth/login")
+async def auth_login(payload: AuthLoginRequest, request: Request, response: Response) -> dict[str, bool]:
+    if not auth_manager.verify_login(payload.password, auth_manager.client_key(request)):
+        raise HTTPException(status_code=401, detail="密码错误或尝试过于频繁")
+    auth_manager.create_session_cookie(response)
+    return {"ok": True}
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(response: Response) -> dict[str, bool]:
+    auth_manager.clear_session_cookie(response)
+    return {"ok": True}
 
 
 @app.get("/api/logs")

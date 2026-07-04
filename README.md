@@ -34,6 +34,26 @@ npm run dev
 
 ## Docker 启动
 
+首次启动前先创建 `.env` 并设置访问密码：
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+至少修改：
+
+```text
+GOOFISH_ADMIN_PASSWORD=一段足够长的随机密码
+GOOFISH_SESSION_SECRET=一段足够长的随机会话密钥
+```
+
+可以用下面的命令生成会话密钥：
+
+```bash
+openssl rand -base64 48
+```
+
 构建并启动：
 
 ```bash
@@ -81,6 +101,8 @@ docker compose down
 ```bash
 git clone https://github.com/<your-name>/goofish-monitor.git
 cd goofish-monitor
+cp .env.example .env
+nano .env
 docker compose up -d --build
 ```
 
@@ -101,6 +123,25 @@ docker compose up -d --build
 ```
 
 Ubuntu 24.04/22.04 arm64 服务器如果 `apt` 找不到 `docker-compose-plugin`，需要先按 Docker 官方方式添加 Docker apt 源，安装包名仍然是 `docker-compose-plugin`。
+
+## 访问密码
+
+服务端会保护所有业务 API。未登录时只能访问登录页、健康检查和登录接口。登录成功后后端写入 `HttpOnly`、`SameSite=Lax` 的签名 Cookie。
+
+默认使用 `.env` 里的 `GOOFISH_ADMIN_PASSWORD`。如果不想在服务器环境变量里保存明文密码，可以改用 scrypt 哈希：
+
+```bash
+docker compose run --rm ai-goofish-monitor python -c 'from backend.app.auth import hash_password; import getpass; print(hash_password(getpass.getpass("Password: ")))'
+```
+
+然后编辑 `.env`：
+
+```text
+GOOFISH_ADMIN_PASSWORD=
+GOOFISH_ADMIN_PASSWORD_HASH=scrypt$...
+```
+
+`GOOFISH_SESSION_SECRET` 用于签名登录 Cookie。生产环境建议固定设置一段随机值，否则容器重启后已登录会话会失效。
 
 ## 反封控说明
 

@@ -184,7 +184,8 @@ class AiClient:
                         json=payload,
                     )
                     response.raise_for_status()
-                    return response.json()
+                    response_data = response.json()
+                    return response_data if isinstance(response_data, dict) else None
             except httpx.TimeoutException:
                 if attempt >= len(retry_delays):
                     runtime_logs.add(

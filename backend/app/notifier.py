@@ -26,6 +26,9 @@ class WechatNotifier:
     async def maybe_notify_product(self, settings: AppSettings, result: ProductResult) -> None:
         if not self._should_notify(settings, result, log_skip=True):
             return
+        decision = result.decision
+        if decision is None:
+            return
 
         notify = settings.notify
         if await self._already_sent(result):
@@ -49,13 +52,13 @@ class WechatNotifier:
         record = NotificationRecord(
             task_id=result.task_id,
             product_url=result.product.url,
-            worth_percent=result.decision.worth_percent,
+            worth_percent=decision.worth_percent,
         )
         await store.notifications.upsert(record)
         runtime_logs.add(
             "info",
             "notify",
-            f"已发送微信提醒 {result.decision.worth_percent}%：{result.product.title[:60]}",
+            f"已发送微信提醒 {decision.worth_percent}%：{result.product.title[:60]}",
         )
 
     async def test_wechat_work_webhook(self, notify: NotifySettings) -> None:

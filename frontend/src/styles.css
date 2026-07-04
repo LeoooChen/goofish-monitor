@@ -136,10 +136,51 @@ textarea:focus {
 
 .topbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 16px;
   margin-bottom: 18px;
+}
+
+.auth-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: #f7f8fb;
+}
+
+.auth-card {
+  display: grid;
+  gap: 18px;
+  width: min(420px, 100%);
+  border: 1px solid #e3e7ee;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 28px;
+  box-shadow: 0 18px 50px rgba(17, 24, 39, 0.12);
+}
+
+.auth-card h1 {
+  margin: 0;
+  font-size: 25px;
+  line-height: 1.2;
+}
+
+.auth-card p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.auth-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid #d9e4ff;
+  border-radius: 8px;
+  background: #eef4ff;
+  color: #2563eb;
 }
 
 .eyebrow {
@@ -889,7 +930,7 @@ label {
   }
 
   .topbar {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
   }
 
   .metrics {

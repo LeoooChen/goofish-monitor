@@ -200,6 +200,19 @@ class NotifyTestRequest(BaseModel):
     save: bool = False
 
 
+class AuthLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    password: str = Field(min_length=1, max_length=512)
+
+
+class AuthStatusResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool
+    authenticated: bool
+
+
 class AppSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

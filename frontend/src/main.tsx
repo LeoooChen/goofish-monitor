@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Filter,
+  LogOut,
   Pencil,
   Play,
   Plus,
@@ -149,6 +150,20 @@ type RuntimeLogEntry = {
   message: string;
 };
 
+type AuthStatus = {
+  enabled: boolean;
+  authenticated: boolean;
+};
+
+class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 const defaultSettings: AppSettings = {
   ai: {
     api_url: null,
@@ -175,19 +190,21 @@ const defaultSettings: AppSettings = {
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers ?? {})
     }
   });
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || response.statusText);
+    const rawMessage = await response.text();
+    throw new ApiError(extractResponseError(rawMessage) || response.statusText, response.status);
   }
   return response.json() as Promise<T>;
 }
 
 function App() {
+  const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [tab, setTab] = useState<AppTab>("accounts");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [tasks, setTasks] = useState<MonitorTask[]>([]);
@@ -197,6 +214,18 @@ function App() {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [filter, setFilter] = useState<ResultFilter>("all");
   const [notice, setNotice] = useState("");
+
+  function handleDataError(error: unknown) {
+    if (error instanceof ApiError && error.status === 401) {
+      setAuthStatus({ enabled: true, authenticated: false });
+      return;
+    }
+    setNotice(formatErrorMessage(error));
+  }
+
+  async function refreshAuthStatus() {
+    setAuthStatus(await api<AuthStatus>("/api/auth/status"));
+  }
 
   async function refreshLiveData() {
     const [nextAccounts, nextTasks, nextKnowledgeBases, nextResults] = await Promise.all([
@@ -227,24 +256,30 @@ function App() {
   }
 
   useEffect(() => {
-    void refreshAll().catch((error: unknown) => setNotice(String(error)));
+    void refreshAuthStatus().catch((error: unknown) => setNotice(formatErrorMessage(error)));
+  }, []);
+
+  useEffect(() => {
+    if (!authStatus?.authenticated) return undefined;
+    void refreshAll().catch(handleDataError);
     const timer = window.setInterval(() => {
-      void refreshLiveData().catch(() => undefined);
+      void refreshLiveData().catch(handleDataError);
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [filter]);
+  }, [authStatus?.authenticated, filter]);
 
   async function refreshLogs() {
     setLogs(await api<RuntimeLogEntry[]>("/api/logs?limit=300"));
   }
 
   useEffect(() => {
-    void refreshLogs().catch(() => undefined);
+    if (!authStatus?.authenticated) return undefined;
+    void refreshLogs().catch(handleDataError);
     const timer = window.setInterval(() => {
-      void refreshLogs().catch(() => undefined);
+      void refreshLogs().catch(handleDataError);
     }, 2000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [authStatus?.authenticated]);
 
   const stats = useMemo(() => {
     const recommended = results.filter((item) => item.recommended).length;
@@ -252,6 +287,35 @@ function App() {
     const loggedIn = accounts.filter((item) => item.status === "logged_in").length;
     return { recommended, running, loggedIn };
   }, [accounts, results, tasks]);
+
+  async function logout() {
+    await api<{ ok: boolean }>("/api/auth/logout", { method: "POST", body: "{}" });
+    setAuthStatus({ enabled: true, authenticated: false });
+    setNotice("");
+  }
+
+  if (authStatus === null) {
+    return (
+      <main className="auth-shell">
+        <section className="auth-card">
+          <Search size={24} />
+          <h1>闲鱼监控</h1>
+          <p>正在检查登录状态...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!authStatus.authenticated) {
+    return (
+      <LoginView
+        onAuthenticated={() => {
+          setAuthStatus({ ...authStatus, authenticated: true });
+          setNotice("");
+        }}
+      />
+    );
+  }
 
   return (
     <main className="app-shell">
@@ -296,6 +360,11 @@ function App() {
           <button className="icon-button" title="刷新" onClick={() => void refreshAll()}>
             <RefreshCcw size={18} />
           </button>
+          {authStatus.enabled ? (
+            <button className="icon-button ghost" title="退出登录" onClick={() => void logout()}>
+              <LogOut size={18} />
+            </button>
+          ) : null}
         </header>
 
         {notice ? <div className="notice">{notice}</div> : null}
@@ -341,6 +410,59 @@ function App() {
           />
         )}
       </section>
+    </main>
+  );
+}
+
+function LoginView({ onAuthenticated }: { onAuthenticated: () => void }) {
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setMessage("");
+    try {
+      await api<{ ok: boolean }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ password })
+      });
+      setPassword("");
+      onAuthenticated();
+    } catch (error) {
+      setMessage(formatErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="auth-shell">
+      <form className="auth-card" onSubmit={(event) => void submit(event)}>
+        <div className="auth-mark">
+          <Search size={24} />
+        </div>
+        <div>
+          <p className="eyebrow">AI Goofish Monitor</p>
+          <h1>闲鱼监控</h1>
+        </div>
+        <label>
+          访问密码
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="输入服务器访问密码"
+            autoFocus
+            required
+          />
+        </label>
+        {message ? <div className="notice">{message}</div> : null}
+        <button type="submit" disabled={submitting}>
+          {submitting ? "登录中" : "登录"}
+        </button>
+      </form>
     </main>
   );
 }
@@ -1508,8 +1630,7 @@ function formatDateTime(timestamp: string) {
   });
 }
 
-function formatErrorMessage(error: unknown) {
-  const rawMessage = error instanceof Error ? error.message : String(error);
+function extractResponseError(rawMessage: string) {
   try {
     const parsed = JSON.parse(rawMessage);
     if (typeof parsed.detail === "string") return parsed.detail;
@@ -1520,6 +1641,12 @@ function formatErrorMessage(error: unknown) {
     return rawMessage;
   }
   return rawMessage;
+}
+
+function formatErrorMessage(error: unknown) {
+  if (error instanceof ApiError) return error.message;
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  return extractResponseError(rawMessage) || rawMessage;
 }
 
 function formatLogTime(timestamp: string) {
