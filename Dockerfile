@@ -16,10 +16,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+COPY requirements.txt ./
+RUN pip install -r requirements.txt \
+    && python -m playwright install --with-deps chromium
+
 COPY pyproject.toml README.md ./
 COPY backend ./backend
-RUN pip install . \
-    && python -m playwright install --with-deps chromium
+RUN pip install --no-deps .
 
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 COPY docker-entrypoint.sh ./docker-entrypoint.sh

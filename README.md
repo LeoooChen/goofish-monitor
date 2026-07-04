@@ -122,6 +122,8 @@ git pull
 docker compose up -d --build
 ```
 
+首次构建会安装 Python 依赖、Node 依赖和 Playwright Chromium 浏览器，所以会比较慢。后续构建会复用 Docker 缓存：只改业务代码时不会重新下载这些依赖；只有修改 `requirements.txt`、`frontend/package-lock.json`、Dockerfile 相关依赖层，或者使用 `--no-cache`/清理 Docker 缓存后，才会重新安装。
+
 Ubuntu 24.04/22.04 arm64 服务器如果 `apt` 找不到 `docker-compose-plugin`，需要先按 Docker 官方方式添加 Docker apt 源，安装包名仍然是 `docker-compose-plugin`。
 
 ## 访问密码
