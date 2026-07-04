@@ -169,7 +169,7 @@ const defaultSettings: AppSettings = {
     api_url: null,
     api_key: "",
     model_name: "gpt-4o-mini",
-    request_interval_seconds: null
+    request_interval_seconds: 3
   },
   browser: {
     headless: false,
@@ -1494,6 +1494,7 @@ function SettingsView({
             {aiTest.latency_ms !== null ? <span>耗时：{aiTest.latency_ms} ms</span> : null}
             {aiTest.response_preview ? <span>响应：{aiTest.response_preview}</span> : null}
             {aiTest.error ? <span>错误：{aiTest.error}</span> : null}
+            {aiTest.ok ? <span>单次测试通过只代表配置可用；批量分析仍可能触发 429 限流，请适当调大 AI 请求间隔。</span> : null}
           </div>
         ) : null}
       </form>

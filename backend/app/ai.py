@@ -186,6 +186,23 @@ class AiClient:
                     response.raise_for_status()
                     response_data = response.json()
                     return response_data if isinstance(response_data, dict) else None
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 429:
+                    raise
+                if attempt >= len(retry_delays):
+                    runtime_logs.add(
+                        "warning",
+                        "ai",
+                        f"AI 接口限流 429，已跳过本商品分析：{product_title[:60]}",
+                    )
+                    return None
+                delay = self._retry_after_seconds(exc.response) or retry_delays[attempt]
+                runtime_logs.add(
+                    "warning",
+                    "ai",
+                    f"AI 接口限流 429，{delay:.0f} 秒后重试：{product_title[:60]}",
+                )
+                await asyncio.sleep(delay)
             except httpx.TimeoutException:
                 if attempt >= len(retry_delays):
                     runtime_logs.add(
@@ -202,6 +219,15 @@ class AiClient:
                 )
                 await asyncio.sleep(delay)
         return None
+
+    def _retry_after_seconds(self, response: httpx.Response) -> float | None:
+        retry_after = response.headers.get("retry-after")
+        if retry_after is None:
+            return None
+        try:
+            return max(1.0, min(float(retry_after), 120.0))
+        except ValueError:
+            return None
 
     def _chat_completions_url(self, api_url: str) -> str:
         trimmed = api_url.rstrip("/")

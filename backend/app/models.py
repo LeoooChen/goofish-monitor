@@ -139,7 +139,7 @@ class AiSettings(BaseModel):
     api_url: HttpUrl | None = None
     api_key: str = ""
     model_name: str = "gpt-4o-mini"
-    request_interval_seconds: float | None = Field(default=None, ge=0.2, le=120)
+    request_interval_seconds: float | None = Field(default=3, ge=0.2, le=120)
 
     @field_validator("api_key")
     @classmethod
