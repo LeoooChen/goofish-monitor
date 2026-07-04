@@ -1316,26 +1316,48 @@ function SettingsView({
             }
           />
         </label>
-        <label>
-          AI 请求间隔（秒）
-          <input
-            type="number"
-            min={0.2}
-            step={0.1}
-            placeholder="建议 5-10"
-            value={settings.ai.request_interval_seconds ?? ""}
-            onChange={(event) =>
-              setSettings({
-                ...settings,
-                ai: {
-                  ...settings.ai,
-                  request_interval_seconds: event.target.value ? Number(event.target.value) : null
+        <label className="interval-field">
+          <span>AI 请求间隔</span>
+          <div className="interval-control">
+            <div className="input-suffix">
+              <input
+                type="number"
+                min={0.2}
+                step={0.1}
+                placeholder="3"
+                value={settings.ai.request_interval_seconds ?? ""}
+                onChange={(event) =>
+                  setSettings({
+                    ...settings,
+                    ai: {
+                      ...settings.ai,
+                      request_interval_seconds: event.target.value ? Number(event.target.value) : null
+                    }
+                  })
                 }
-              })
-            }
-          />
+              />
+              <span>秒</span>
+            </div>
+            <div className="interval-presets" aria-label="AI 请求间隔快捷设置">
+              {[3, 5, 10].map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  className={settings.ai.request_interval_seconds === seconds ? "active" : ""}
+                  onClick={() =>
+                    setSettings({
+                      ...settings,
+                      ai: { ...settings.ai, request_interval_seconds: seconds }
+                    })
+                  }
+                >
+                  {seconds}s
+                </button>
+              ))}
+            </div>
+          </div>
           <span className="field-hint">
-            任务批量分析时每次 AI 请求之间的等待时间；遇到 429 建议设为 5-10 秒，留空按 3 秒处理。
+            批量分析时每个商品都会等待；遇到 429 建议用 5-10 秒，留空按 3 秒处理。
           </span>
         </label>
         <div className="form-row">

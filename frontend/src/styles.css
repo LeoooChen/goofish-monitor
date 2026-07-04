@@ -764,6 +764,76 @@ label {
   font-weight: 800;
 }
 
+.interval-field {
+  align-content: start;
+}
+
+.interval-control {
+  display: grid;
+  grid-template-columns: minmax(128px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.input-suffix {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  background: #ffffff;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.input-suffix:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.input-suffix input {
+  min-height: 40px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.input-suffix input:focus {
+  box-shadow: none;
+}
+
+.input-suffix span {
+  padding: 0 12px 0 6px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.interval-presets {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.interval-presets button {
+  min-height: 40px;
+  border-color: #d9dee8;
+  background: #ffffff;
+  color: #4b5563;
+  padding: 0 10px;
+  box-shadow: none;
+  font-size: 12px;
+}
+
+.interval-presets button:hover,
+.interval-presets button.active {
+  border-color: #2563eb;
+  background: #eef4ff;
+  color: #1d4ed8;
+  box-shadow: none;
+}
+
 .settings-actions {
   display: flex;
   flex-wrap: wrap;
@@ -941,6 +1011,15 @@ label {
   .settings-form,
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .interval-control {
+    grid-template-columns: 1fr;
+  }
+
+  .interval-presets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .item-card,
