@@ -40,6 +40,12 @@ npm run dev
 docker compose up -d --build
 ```
 
+如果服务器提示 `unknown command: compose`，说明 Docker 没有安装 Compose v2 插件，改用旧命令：
+
+```bash
+docker-compose up -d --build
+```
+
 访问地址：
 
 ```text
@@ -50,12 +56,14 @@ http://127.0.0.1:8000
 
 ```bash
 docker compose logs -f
+# 或：docker-compose logs -f
 ```
 
 停止：
 
 ```bash
 docker compose down
+# 或：docker-compose down
 ```
 
 容器会把本地目录挂载到容器中：
@@ -75,11 +83,18 @@ cd goofish-monitor
 docker compose up -d --build
 ```
 
+如果 `docker compose` 不可用：
+
+```bash
+docker-compose up -d --build
+```
+
 升级时：
 
 ```bash
 git pull
 docker compose up -d --build
+# 或：docker-compose up -d --build
 ```
 
 ## 反封控说明
