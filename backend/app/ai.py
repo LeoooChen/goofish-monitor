@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from .models import AiDecision, AiSettings, AiTestResponse, ProductCandidate
+from .models import AiDecision, AiModelListResponse, AiSettings, AiTestResponse, ProductCandidate
 from .runtime_logs import runtime_logs
 
 
@@ -40,18 +40,22 @@ class AiClient:
             "worth_percent(0-100整数), reason(string)。\n"
             "worth_percent 表示这个商品是否值得联系购买的综合百分比。\n\n"
             "【通用判定规则】：\n"
-            "1. 这是二手商品候选筛选，不是严苛验真。用户写的型号、版本、配置通常表示偏好和搜索目标，"
+            "1. 这是二手商品候选筛选，不是严苛验真。用户写的型号、版本、配置通常"
+            "表示偏好和搜索目标，"
             "不要因为信息不完整、卖家描述口语化、缺少序列号或不能 100% 确认，就直接判 0 分。\n"
-            "2. 型号相近或同产品线的商品也可以给中等分，尤其是价格、成色、图片和卖家信息有联系价值时。"
+            "2. 型号相近或同产品线的商品也可以给中等分，尤其是价格、成色、图片"
+            "和卖家信息有联系价值时。"
             "只有明确属于不同产品线、明显不是目标品类、核心型号确定冲突，或存在严重故障/风险时，才给很低分。\n"
-            "3. 如果商品标题或描述包含多个互相冲突的型号、品牌或品类，优先相信有上下文的具体描述、实拍图和明确参数，"
+            "3. 如果商品标题或描述包含多个互相冲突的型号、品牌或品类，优先相信"
+            "有上下文的具体描述、实拍图和明确参数，"
             "警惕卖家堆砌关键词引流，但不要仅因出现引流词就否定商品。\n"
             "4. worth_percent 应综合匹配度、价格、成色、风险信号、信息完整度和联系价值评分；"
             "明显不匹配给 0-20 分，疑似相关但信息不足给 30-60 分，目标接近且值得问卖家给 60-85 分，"
             "高度匹配且价格/成色有优势给 85 分以上。\n"
             "5. is_target_product 表示“值得作为候选继续看/联系”，不是“已完全确认型号”。"
             "只要商品大概率属于目标范围或相近可接受范围，就可以为 true。\n"
-            "6. 如果用户提供了知识库，只把它当作当前品类的参考资料；知识库与商品信息冲突时，以商品标题、描述和图片中的实际证据为准。"
+            "6. 如果用户提供了知识库，只把它当作当前品类的参考资料；知识库与商品"
+            "信息冲突时，以商品标题、描述和图片中的实际证据为准。"
         )
         messages = [
             {
@@ -159,6 +163,70 @@ class AiClient:
                 error=str(exc),
             )
 
+    async def list_models(self, settings: AiSettings) -> AiModelListResponse:
+        api_url = str(settings.api_url) if settings.api_url is not None else None
+        if settings.api_url is None:
+            return AiModelListResponse(
+                ok=False,
+                api_url=None,
+                request_url=None,
+                api_key_configured=bool(settings.api_key),
+                error="请先填写 API 地址",
+            )
+
+        request_url = self._models_url(str(settings.api_url))
+        if not settings.api_key:
+            return AiModelListResponse(
+                ok=False,
+                api_url=api_url,
+                request_url=request_url,
+                api_key_configured=False,
+                error="请先填写 API Key",
+            )
+
+        headers = {
+            "Authorization": f"Bearer {settings.api_key}",
+            "Content-Type": "application/json",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(request_url, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+            models = self._parse_model_ids(data)
+            if not models:
+                return AiModelListResponse(
+                    ok=False,
+                    api_url=api_url,
+                    request_url=request_url,
+                    api_key_configured=True,
+                    models=[],
+                    error="接口返回中没有可用模型名称",
+                )
+            return AiModelListResponse(
+                ok=True,
+                api_url=api_url,
+                request_url=request_url,
+                api_key_configured=True,
+                models=models,
+            )
+        except httpx.HTTPStatusError as exc:
+            return AiModelListResponse(
+                ok=False,
+                api_url=api_url,
+                request_url=request_url,
+                api_key_configured=True,
+                error=f"HTTP {exc.response.status_code}: {exc.response.text[:300]}",
+            )
+        except Exception as exc:
+            return AiModelListResponse(
+                ok=False,
+                api_url=api_url,
+                request_url=request_url,
+                api_key_configured=True,
+                error=str(exc),
+            )
+
     async def _respect_rate_limit(self, interval_seconds: float | None) -> None:
         interval_seconds = 3 if interval_seconds is None else interval_seconds
         elapsed = time.monotonic() - self._last_request_at
@@ -237,6 +305,40 @@ class AiClient:
         if "/api/paas/v4" in trimmed:
             return f"{trimmed}/chat/completions"
         return urljoin(f"{trimmed}/", "v1/chat/completions")
+
+    def _models_url(self, api_url: str) -> str:
+        trimmed = api_url.rstrip("/")
+        if trimmed.endswith("/models"):
+            return trimmed
+        if trimmed.endswith("/chat/completions"):
+            return re.sub(r"/chat/completions$", "/models", trimmed)
+        if re.search(r"/v\d+$", trimmed):
+            return f"{trimmed}/models"
+        if "/api/paas/v4" in trimmed:
+            return f"{trimmed}/models"
+        return urljoin(f"{trimmed}/", "v1/models")
+
+    def _parse_model_ids(self, data: Any) -> list[str]:
+        if not isinstance(data, dict):
+            return []
+        raw_models = data.get("data")
+        if not isinstance(raw_models, list):
+            raw_models = data.get("models")
+        if not isinstance(raw_models, list):
+            return []
+
+        models: list[str] = []
+        seen: set[str] = set()
+        for item in raw_models:
+            model_id = item.get("id") if isinstance(item, dict) else item
+            if not isinstance(model_id, str):
+                continue
+            model_id = model_id.strip()
+            if not model_id or model_id in seen:
+                continue
+            models.append(model_id)
+            seen.add(model_id)
+        return models
 
     def _build_prompt(
         self,

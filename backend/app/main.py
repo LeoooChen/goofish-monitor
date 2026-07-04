@@ -9,8 +9,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .ai import ai_client
@@ -19,11 +18,12 @@ from .browser import login_manager, monitor_runner
 from .models import (
     Account,
     AccountCreate,
-    AuthLoginRequest,
-    AuthStatusResponse,
+    AiModelListResponse,
     AiSettings,
     AiTestResponse,
     AppSettings,
+    AuthLoginRequest,
+    AuthStatusResponse,
     KnowledgeBase,
     KnowledgeBaseCreate,
     KnowledgeBaseUpdate,
@@ -94,7 +94,11 @@ async def auth_status(request: Request) -> AuthStatusResponse:
 
 
 @app.post("/api/auth/login")
-async def auth_login(payload: AuthLoginRequest, request: Request, response: Response) -> dict[str, bool]:
+async def auth_login(
+    payload: AuthLoginRequest,
+    request: Request,
+    response: Response,
+) -> dict[str, bool]:
     if not auth_manager.verify_login(payload.password, auth_manager.client_key(request)):
         raise HTTPException(status_code=401, detail="密码错误或尝试过于频繁")
     auth_manager.create_session_cookie(response)
@@ -285,6 +289,11 @@ async def update_settings(payload: AppSettings) -> AppSettings:
 @app.post("/api/settings/ai/test")
 async def test_ai_settings(payload: AiSettings) -> AiTestResponse:
     return await ai_client.test_connection(payload)
+
+
+@app.post("/api/settings/ai/models")
+async def list_ai_models(payload: AiSettings) -> AiModelListResponse:
+    return await ai_client.list_models(payload)
 
 
 @app.post("/api/settings/notify/test")

@@ -160,6 +160,17 @@ class AiTestResponse(BaseModel):
     error: str | None = None
 
 
+class AiModelListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ok: bool
+    api_url: str | None
+    request_url: str | None = None
+    api_key_configured: bool
+    models: list[str] = Field(default_factory=list)
+    error: str | None = None
+
+
 class BrowserSettings(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

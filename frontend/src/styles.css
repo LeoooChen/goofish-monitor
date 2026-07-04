@@ -303,6 +303,29 @@ label {
   font-weight: 750;
 }
 
+.field-block {
+  display: grid;
+  gap: 6px;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+}
+
+.compact-button {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .field-hint {
   color: #6b7280;
   font-size: 12px;
@@ -757,6 +780,11 @@ label {
   width: 100%;
 }
 
+.settings-form > .field-block {
+  align-self: start;
+  width: 100%;
+}
+
 .settings-section-title,
 .wide-field {
   grid-column: 1 / -1;
@@ -771,6 +799,12 @@ label {
 
 .interval-field {
   align-content: start;
+}
+
+.interval-field > span:first-child {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
 }
 
 .input-suffix {

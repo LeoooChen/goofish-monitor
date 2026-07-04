@@ -120,6 +120,15 @@ type AiTestResponse = {
   error: string | null;
 };
 
+type AiModelListResponse = {
+  ok: boolean;
+  api_url: string | null;
+  request_url: string | null;
+  api_key_configured: boolean;
+  models: string[];
+  error: string | null;
+};
+
 type ProductResult = {
   id: string;
   task_id: string;
@@ -1228,7 +1237,16 @@ function SettingsView({
 }) {
   const [aiTest, setAiTest] = useState<AiTestResponse | null>(null);
   const [testingAi, setTestingAi] = useState(false);
+  const [detectingModels, setDetectingModels] = useState(false);
+  const [aiModels, setAiModels] = useState<string[]>([]);
   const [testingNotify, setTestingNotify] = useState(false);
+  const modelOptions = useMemo(() => {
+    const currentModel = settings.ai.model_name.trim();
+    if (!currentModel || aiModels.includes(currentModel)) {
+      return aiModels;
+    }
+    return [currentModel, ...aiModels];
+  }, [aiModels, settings.ai.model_name]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -1267,6 +1285,31 @@ function SettingsView({
     }
   }
 
+  async function detectModels() {
+    setDetectingModels(true);
+    try {
+      const result = await api<AiModelListResponse>("/api/settings/ai/models", {
+        method: "POST",
+        body: JSON.stringify(settings.ai)
+      });
+      if (!result.ok) {
+        setAiModels([]);
+        onNotice(`模型检测失败：${result.error ?? "接口没有返回模型列表"}`);
+        return;
+      }
+      setAiModels(result.models);
+      if (!settings.ai.model_name.trim() && result.models[0]) {
+        setSettings({ ...settings, ai: { ...settings.ai, model_name: result.models[0] } });
+      }
+      onNotice(`已检测到 ${result.models.length} 个模型。`);
+    } catch (error) {
+      setAiModels([]);
+      onNotice(`模型检测失败：${String(error)}`);
+    } finally {
+      setDetectingModels(false);
+    }
+  }
+
   async function testNotify() {
     setTestingNotify(true);
     const enabledNotifySettings = { ...settings.notify, enabled: true };
@@ -1291,9 +1334,10 @@ function SettingsView({
           API 地址
           <input
             value={settings.ai.api_url ?? ""}
-            onChange={(event) =>
-              setSettings({ ...settings, ai: { ...settings.ai, api_url: event.target.value || null } })
-            }
+            onChange={(event) => {
+              setAiModels([]);
+              setSettings({ ...settings, ai: { ...settings.ai, api_url: event.target.value || null } });
+            }}
             placeholder="https://api.openai.com/v1"
           />
         </label>
@@ -1302,20 +1346,49 @@ function SettingsView({
           <input
             type="password"
             value={settings.ai.api_key}
-            onChange={(event) =>
-              setSettings({ ...settings, ai: { ...settings.ai, api_key: event.target.value } })
-            }
+            onChange={(event) => {
+              setAiModels([]);
+              setSettings({ ...settings, ai: { ...settings.ai, api_key: event.target.value } });
+            }}
           />
         </label>
-        <label>
-          模型名称
-          <input
-            value={settings.ai.model_name}
-            onChange={(event) =>
-              setSettings({ ...settings, ai: { ...settings.ai, model_name: event.target.value } })
-            }
-          />
-        </label>
+        <div className="field-block model-field">
+          <div className="field-label-row">
+            <span>模型名称</span>
+            <button
+              className="ghost compact-button"
+              type="button"
+              disabled={detectingModels}
+              onClick={() => void detectModels()}
+            >
+              <RefreshCcw size={14} /> {detectingModels ? "检测中" : "自动检测"}
+            </button>
+          </div>
+          {aiModels.length > 0 ? (
+            <select
+              value={settings.ai.model_name}
+              onChange={(event) =>
+                setSettings({ ...settings, ai: { ...settings.ai, model_name: event.target.value } })
+              }
+            >
+              {modelOptions.map((modelName) => (
+                <option key={modelName} value={modelName}>
+                  {modelName}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              value={settings.ai.model_name}
+              onChange={(event) =>
+                setSettings({ ...settings, ai: { ...settings.ai, model_name: event.target.value } })
+              }
+            />
+          )}
+          {aiModels.length > 0 ? (
+            <span className="field-hint">已检测到 {aiModels.length} 个模型，可直接选择。</span>
+          ) : null}
+        </div>
         <label className="interval-field">
           <span>AI 请求间隔</span>
           <div className="input-suffix">
