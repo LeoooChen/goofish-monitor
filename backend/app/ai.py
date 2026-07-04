@@ -160,8 +160,7 @@ class AiClient:
             )
 
     async def _respect_rate_limit(self, interval_seconds: float | None) -> None:
-        if interval_seconds is None:
-            return
+        interval_seconds = 3 if interval_seconds is None else interval_seconds
         elapsed = time.monotonic() - self._last_request_at
         if elapsed < interval_seconds:
             await asyncio.sleep(interval_seconds - elapsed)

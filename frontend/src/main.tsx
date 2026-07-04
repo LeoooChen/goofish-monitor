@@ -1317,11 +1317,12 @@ function SettingsView({
           />
         </label>
         <label>
-          AI 请求间隔
+          AI 请求间隔（秒）
           <input
             type="number"
             min={0.2}
             step={0.1}
+            placeholder="建议 5-10"
             value={settings.ai.request_interval_seconds ?? ""}
             onChange={(event) =>
               setSettings({
@@ -1333,6 +1334,9 @@ function SettingsView({
               })
             }
           />
+          <span className="field-hint">
+            任务批量分析时每次 AI 请求之间的等待时间；遇到 429 建议设为 5-10 秒，留空按 3 秒处理。
+          </span>
         </label>
         <div className="form-row">
           <label className="switch">
