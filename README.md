@@ -40,10 +40,13 @@ npm run dev
 docker compose up -d --build
 ```
 
-如果服务器提示 `unknown command: compose`，说明 Docker 没有安装 Compose v2 插件，改用旧命令：
+如果服务器提示 `unknown command: compose`，说明 Docker 没有安装 Compose v2 插件。不要使用旧版 `docker-compose` v1；它在 Ubuntu Python 3.12 环境下可能因为缺少 `distutils` 崩溃。请安装 Compose v2 插件：
 
 ```bash
-docker-compose up -d --build
+sudo apt update
+sudo apt install docker-compose-plugin
+docker compose version
+docker compose up -d --build
 ```
 
 访问地址：
@@ -56,14 +59,12 @@ http://127.0.0.1:8000
 
 ```bash
 docker compose logs -f
-# 或：docker-compose logs -f
 ```
 
 停止：
 
 ```bash
 docker compose down
-# 或：docker-compose down
 ```
 
 容器会把本地目录挂载到容器中：
@@ -83,10 +84,13 @@ cd goofish-monitor
 docker compose up -d --build
 ```
 
-如果 `docker compose` 不可用：
+如果 `docker compose` 不可用，先安装 Compose v2 插件：
 
 ```bash
-docker-compose up -d --build
+sudo apt update
+sudo apt install docker-compose-plugin
+docker compose version
+docker compose up -d --build
 ```
 
 升级时：
@@ -94,8 +98,9 @@ docker-compose up -d --build
 ```bash
 git pull
 docker compose up -d --build
-# 或：docker-compose up -d --build
 ```
+
+Ubuntu 24.04/22.04 arm64 服务器如果 `apt` 找不到 `docker-compose-plugin`，需要先按 Docker 官方方式添加 Docker apt 源，安装包名仍然是 `docker-compose-plugin`。
 
 ## 反封控说明
 
