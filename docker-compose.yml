@@ -1,0 +1,15 @@
+services:
+  ai-goofish-monitor:
+    build:
+      context: .
+    image: ai-goofish-monitor:latest
+    container_name: ai-goofish-monitor
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      BACKEND_HOST: 0.0.0.0
+      BACKEND_PORT: 8000
+    restart: unless-stopped
