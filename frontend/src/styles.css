@@ -752,6 +752,11 @@ label {
   padding: 16px;
 }
 
+.settings-form > label {
+  align-self: start;
+  width: 100%;
+}
+
 .settings-section-title,
 .wide-field {
   grid-column: 1 / -1;
@@ -768,13 +773,6 @@ label {
   align-content: start;
 }
 
-.interval-control {
-  display: grid;
-  grid-template-columns: minmax(128px, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-}
-
 .input-suffix {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -783,6 +781,7 @@ label {
   border: 1px solid #d9dee8;
   border-radius: 8px;
   background: #ffffff;
+  min-height: 40px;
   transition:
     border-color 140ms ease,
     box-shadow 140ms ease;
@@ -794,7 +793,8 @@ label {
 }
 
 .input-suffix input {
-  min-height: 40px;
+  height: 38px;
+  min-height: 38px;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -814,14 +814,15 @@ label {
 .interval-presets {
   display: inline-flex;
   gap: 6px;
+  align-items: center;
 }
 
 .interval-presets button {
-  min-height: 40px;
+  min-height: 30px;
   border-color: #d9dee8;
   background: #ffffff;
   color: #4b5563;
-  padding: 0 10px;
+  padding: 0 9px;
   box-shadow: none;
   font-size: 12px;
 }
@@ -1010,10 +1011,6 @@ label {
 
   .settings-form,
   .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .interval-control {
     grid-template-columns: 1fr;
   }
 
