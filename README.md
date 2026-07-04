@@ -94,6 +94,17 @@ docker compose down
 
 如果在服务器或容器里扫码登录，打开 Web 页面后进入账号管理，点击账号的“登录”按钮，页面会弹出最新登录二维码或登录页截图。截图也会保存到 `data/login-qrcode/`，日志里仍会输出一次二维码预览。
 
+云服务器通常没有 XServer，不能启动有界面的 Chromium。Docker 默认设置了 `GOOFISH_BROWSER_HEADLESS=true`，后端也会在 Linux 无 `$DISPLAY` 时自动使用无界面浏览器。扫码登录仍然可用：浏览器在后台打开登录页，页面截图会通过 Web 弹窗展示。
+
+如果你看到 `Missing X server or $DISPLAY`，更新代码并重建容器：
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+如果你看到 `No such file or directory: data/accounts/<id>.json`，也是旧版本没有自动创建登录态目录；更新并重建即可。
+
 ## 服务器部署
 
 仓库只提交源码、Docker 配置和前端 lockfile；本地数据、账号登录态、日志、Python 虚拟环境、前端依赖和构建产物都已忽略。服务器上 clone 后直接构建运行：

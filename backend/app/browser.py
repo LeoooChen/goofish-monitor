@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import random
+import sys
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -37,6 +39,19 @@ CHROMIUM_ARGS = [
     "--no-sandbox",
     "--disable-dev-shm-usage",
 ]
+
+
+def browser_headless_enabled(settings: AppSettings, task: MonitorTask | None = None) -> bool:
+    env_value = os.getenv("GOOFISH_BROWSER_HEADLESS", "").strip().lower()
+    if env_value in {"1", "true", "yes", "on"}:
+        return True
+    if env_value in {"0", "false", "no", "off"}:
+        return False
+    if task is not None and task.browser_headless is not None:
+        return task.browser_headless
+    if sys.platform.startswith("linux") and not os.getenv("DISPLAY"):
+        return True
+    return settings.browser.headless
 
 
 async def setup_stealth_context(context: BrowserContext) -> None:
@@ -118,13 +133,14 @@ class BrowserLoginManager:
 
         user_data_dir = Path(settings.browser.user_data_dir) / account.id
         storage_state_path = Path("data/accounts") / f"{account.id}.json"
+        storage_state_path.parent.mkdir(parents=True, exist_ok=True)
         self._clear_login_qr(account.id)
 
         try:
             async with async_playwright() as playwright:
                 context = await playwright.chromium.launch_persistent_context(
                     user_data_dir=str(user_data_dir),
-                    headless=settings.browser.headless,
+                    headless=browser_headless_enabled(settings),
                     viewport={"width": 1280, "height": 900},
                     locale="zh-CN",
                     user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -408,9 +424,7 @@ class MonitorRunner:
 
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(
-                headless=task.browser_headless
-                if task.browser_headless is not None
-                else settings.browser.headless,
+                headless=browser_headless_enabled(settings, task),
                 args=CHROMIUM_ARGS,
             )
             context = await browser.new_context(

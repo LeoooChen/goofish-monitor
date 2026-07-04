@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-mkdir -p data logs
+mkdir -p data/accounts data/browser-profile data/login-qrcode logs
 
 if [[ -z "${GOOFISH_ADMIN_PASSWORD:-}" && -z "${GOOFISH_ADMIN_PASSWORD_HASH:-}" ]]; then
   echo "Set GOOFISH_ADMIN_PASSWORD or GOOFISH_ADMIN_PASSWORD_HASH in .env before starting."
