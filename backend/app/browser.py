@@ -211,12 +211,79 @@ class BrowserLoginManager:
     ) -> None:
         deadline = asyncio.get_running_loop().time() + settings.browser.login_timeout_seconds
         printed = False
+        keep_clicked = False
         while asyncio.get_running_loop().time() < deadline:
+            keep_clicked = (
+                await self._click_keep_login_if_present(page, show_log=not keep_clicked) or keep_clicked
+            )
             if await self._is_goofish_logged_in(context, page):
                 return
             printed = await self._print_qr(page, account_id, show_terminal_preview=not printed) or printed
             await page.wait_for_timeout(3000)
         raise TimeoutError("等待闲鱼扫码登录超时，请重新点击扫码登录")
+
+    async def _click_keep_login_if_present(self, page: Page, show_log: bool = True) -> bool:
+        try:
+            body_text = await page.locator("body").inner_text(timeout=1000)
+        except Exception:
+            return False
+        compact_text = body_text.replace(" ", "").replace("\n", "")
+        if "保持登录状态" not in compact_text:
+            return False
+
+        selectors = [
+            "button:has-text('保持')",
+            "text=保持",
+            "[role='button']:has-text('保持')",
+            "div:has-text('保持')",
+        ]
+        for selector in selectors:
+            try:
+                locator = page.locator(selector).first
+                if await locator.count() == 0:
+                    continue
+                await locator.click(timeout=2500)
+                await page.wait_for_timeout(1200)
+                if show_log:
+                    runtime_logs.add("info", "login", "检测到保持登录状态页面，已点击「保持」")
+                return True
+            except Exception:
+                continue
+
+        try:
+            clicked = await page.evaluate(
+                """
+                () => {
+                  const isVisible = (el) => {
+                    const style = window.getComputedStyle(el);
+                    const rect = el.getBoundingClientRect();
+                    return style.visibility !== 'hidden'
+                      && style.display !== 'none'
+                      && rect.width > 0
+                      && rect.height > 0;
+                  };
+                  const candidates = Array.from(document.querySelectorAll('button, a, div, span'))
+                    .filter((el) => (el.innerText || el.textContent || '').trim() === '保持')
+                    .filter(isVisible)
+                    .sort((left, right) => {
+                      const leftRect = left.getBoundingClientRect();
+                      const rightRect = right.getBoundingClientRect();
+                      return (rightRect.width * rightRect.height) - (leftRect.width * leftRect.height);
+                    });
+                  if (candidates.length === 0) return false;
+                  candidates[0].click();
+                  return true;
+                }
+                """
+            )
+            if clicked:
+                await page.wait_for_timeout(1200)
+                if show_log:
+                    runtime_logs.add("info", "login", "检测到保持登录状态页面，已点击「保持」")
+                return True
+        except Exception:
+            return False
+        return False
 
     def _clear_login_qr(self, account_id: str) -> None:
         for suffix in ("", "-page"):
